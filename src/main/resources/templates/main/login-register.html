@@ -61,6 +61,16 @@
         .btn:hover{
             background: rgba(255,255,255,.25);
         }
+        .btn-sendmail{
+            width:30px;
+            height: 20px;
+            border: 1px solid #fff;
+            font-size:6px;
+            color: #fff;
+        }
+        .btn-sendmail:hover{
+            background: rgba(255,255,255,.25);
+        }
         #login_wrap{
             width: 980px;
             min-height: 500px;
@@ -302,13 +312,13 @@
                     <form action="post">
                         <p class="form"><input type="text" id="usertag" name="usertag" placeholder="用户名"></p>
                         <p class="form confirm"><input type="text" name="nickname" placeholder="昵称"></p>
-                        <p class="form confirm"><input type="email" name="email" placeholder="邮箱"></p>
+                        <p class="form confirm"><input type="email" name="email" placeholder="邮箱" id="email" style="width:68%;float:left;">
+                        <input class="btn-sendmail" type="button" value="发送验证码" onclick="sendmail();mailService();" id="timeout" style="font-size:8px;width:30%;float:right;!important;"/></p>
                         <p class="form confirm"><input type="text" name="emailcode" placeholder="邮箱验证码"></p>
                         <p class="form"><input type="password" name="password" placeholder="密码"></p>
                         <p class="form confirm"><input type="password" name="checknewpassword" placeholder="再次确认密码"></p>
-                        <p class="form confirm"><input type="text" name="imgcode" placeholder="验证码" style="background:url(/login/getcode) no-repeat right;"></p>
-<!--                        <img src="/login/getcode"-->
-<!--                             onclick="this.src='/login/getcode?'+Math.random();" alt=""/>-->
+                        <p class="form confirm"><input type="text" name="imgcode" placeholder="验证码" style="width:68%;float:left;">
+                        <img src="/login/getcode" onclick="this.src='/login/getcode?'+Math.random();getImgCode();" alt="" style="float: right;margin-top: -5px;!important;"/></p>
                         <input type="button" value="登录" class="btn" onclick="login()" style="margin-right: 20px;" id="log">
                         <input type="button" value="注册" class="btn" onclick='signin()' id="register">
                     </form>
@@ -352,7 +362,8 @@
     var confirm5 = document.getElementsByClassName("confirm")[4];
     confirm5.style.height = 51 + "px";
 
-    var token;
+    var imgToken;
+    var emailToken;
 
     //自动居中title
     var name_c = document.getElementById("title");
@@ -361,6 +372,7 @@
     for (i = 0; i < name.length; i++)
         if (name[i] != ",")
             name_c.innerHTML += "<i>" + name[i] + "</i>";
+    getImgCode();
     //引用hint()在最上方弹出提示
     function hint() {
         let hit = document.getElementById("hint");
@@ -370,17 +382,19 @@
         setTimeout('hit.style.display = "none"', 3000);
     }
 
-    $.ajax({
-        url: "/login/getimgtoken",
-        type: "POST",
-        dataType: "JSON",
-        success: function(data) {
-            window.token = data.data;
-        },
-        error: function() {
-            layer.msg("请求失败！");
-        }
-    });
+    function getImgCode() {
+        $.ajax({
+            url: "/login/getimgtoken",
+            type: "POST",
+            dataType: "JSON",
+            success: function(data) {
+                window.imgToken = data.data;
+            },
+            error: function() {
+                layer.msg("请求失败！");
+            }
+        });
+    }
     //注册按钮
     function signin() {
         let status = document.getElementById("status").getElementsByTagName("i");
@@ -399,34 +413,11 @@
             var nickName = $("input[name='nickname']").val();
             var newPassword = $("input[name='password']").val();
             var checkNewPassword = $("input[name='checknewpassword']").val();
-            var imgCode = $("input[name='imgcode']").val();
 
-            if (emailCode == "") {
-                if (userName == "" || email == "" || newPassword == "" || checkNewPassword == "" || imgCode == "") {
-                    layer.msg('必填项不能为空！');
-                } else if (newPassword != checkNewPassword) {
-                    layer.msg('密码不一致！请重新输入！', {icon: 4});
-                } else {
-                    if (nickName == "") {
-                        nickName = userName;
-                    }
-                    $.ajax({
-                        url: "/login/getemailcode",
-                        type: "POST",
-                        dataType: "JSON",
-                        data: {
-                            "username": nickName,
-                            "email": email
-                        },
-                        success: function (data) {
-                            // var ret = data.ret;
-                            //
-                            //
-                            //
-                            confirm3.style.height = 51 + "px";
-                        }
-                    });
-                }
+            if (userName == "" || email == "" || newPassword == "" || checkNewPassword == "" || emailCode == "") {
+                layer.msg('必填项不能为空！');
+            } else if (newPassword != checkNewPassword) {
+                layer.msg('密码不一致！请重新输入！', {icon: 4});
             } else {
                 $.ajax({
                     url: "/login/checkregister",
@@ -434,10 +425,11 @@
                     dataType: "JSON",
                     data: {
                         "username": userName,
-                        "email": email,
                         "nickname": nickName,
+                        "email": email,
+                        "emailCode": emailCode,
+                        "paraEmailToken": window.emailToken,
                         "password": newPassword,
-                        "imgcode": imgCode,
                         "is_administrator": 0
                     },
                     success: function (data) {
@@ -480,7 +472,7 @@
                         "usertag": userTag,
                         "password": password,
                         "imgcode": imgCode,
-                        "token": window.token
+                        "paraImgToken": window.imgToken
                     },
                     dataType: "JSON",
                     success: function(data) {
@@ -516,5 +508,71 @@
         }
     }
 
+    var countdown = 60;
+    var status = 0;
+    function sendmail() {
+        var userName = $("input[name='usertag']").val();
+        var email = $("input[name='email']").val();
+        var myreg = /^([a-zA-Z0-9]+[_|\_|\.]?)*[a-zA-Z0-9]+@([a-zA-Z0-9]+[_|\_|\.]?)*[a-zA-Z0-9]+\.[a-zA-Z]{2,3}$/;
+        if(!myreg.test(email) || userName == "")
+        {
+            return;
+        }
+        if (window.countdown == 0) {
+            document.getElementById("timeout").removeAttribute("disabled");
+            document.getElementById("timeout").value="获取验证码";
+            window.status = 0;
+            window.countdown = 60;
+            return;
+        } else {
+            document.getElementById("timeout").setAttribute("disabled", true);
+            if (window.status == 0) {
+                document.getElementById("timeout").value="正在发送...(" + window.countdown + ")";
+            } else {
+                document.getElementById("timeout").value="重新发送(" + window.countdown + ")";
+            }
+            window.countdown--;
+        }
+        setTimeout(function() {
+            sendmail(document.getElementById("timeout"))
+        },1000)
+    }
+
+    function mailService() {
+        var userName = $("input[name='usertag']").val();
+        var email = $("input[name='email']").val();
+        var nickName = $("input[name='nickname']").val();
+        if (userName == "" || email == "") {
+            layer.msg("用户名和邮箱不能为空！");
+            return;
+        }
+        if (nickName == "") {
+            nickName = userName;
+        }
+        $.ajax({
+            url: "/login/getemailcode",
+            type: "POST",
+            dataType: "JSON",
+            data: {
+                "username": nickName,
+                "email": email
+            },
+            success: function (data) {
+              	$.ajax({
+              		url: "/login/getemailtoken",
+                	type: "POST",
+                   	dataType: "JSON",
+                   	success: function(data) {
+                  		window.emailToken = data.data;
+                  	},
+                   	error: function() {
+                        	layer.msg("请求失败！");
+                  	}
+              	});
+                window.status = 1;
+                confirm3.style.height = 51 + "px";
+            }
+        });
+    }
 </script>
 </html>

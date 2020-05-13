@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
-import javax.servlet.http.HttpSession;
+import javax.annotation.Resource;
 import java.util.UUID;
 
 /**
@@ -18,7 +18,7 @@ import java.util.UUID;
 @Service
 public class UserServiceImpl {
 
-    @Autowired
+    @Resource
     private UserMapper userMapper;
 
     @Autowired
@@ -43,6 +43,7 @@ public class UserServiceImpl {
         if (!imgCode.toLowerCase().equals(redisImgCode.toLowerCase())) {
             return ResponseUtil.captchaError();
         }
+        
         UserEntity userInfo = userMapper.queryUserByUsername(username);
         if (userInfo == null) {
             return ResponseUtil.loginError();
@@ -78,26 +79,28 @@ public class UserServiceImpl {
         if (affectedRows != 1) {
             return ResponseUtil.dbError("数据库错误3");
         }
+        stringRedisTemplate.opsForValue().getOperations().delete(imgCodeKey);
         return ResponseUtil.success();
     }
 
-    public String checkRegister(String username, String email, String nickname, String password, String imgCode, int is_administrator, HttpSession session) {
-//        Object imgCodeKey = session.getAttribute("imgCodeKey");
-//        // session中无值
-//        if (imgCodeKey == null) {
-//            return ResponseUtil.captchaError();
-//        }
-//        String redisImgCode = stringRedisTemplate.opsForValue().get(imgCodeKey);
-//        // 数据库错误
-//        if (redisImgCode == null) {
-//            return ResponseUtil.dbError("数据库错误");
-//        }
-//        // 验证码错误
-//        if (!imgCode.toLowerCase().equals(redisImgCode.toLowerCase())) {
-//            return ResponseUtil.captchaError();
-//        }
-        UserEntity userInfoByUsername = userMapper.queryUserByUsername(username);
+    public String checkRegister(String username, String email, String nickname, String password, String emailCode, String emailCodeKey, int is_administrator) {
+        if (emailCodeKey == null) {
+            return ResponseUtil.captchaError();
+        }
+    	String redisEmailCode = stringRedisTemplate.opsForValue().get(emailCodeKey);
+        // 数据库错误
+        if (redisEmailCode == null) {
+            return ResponseUtil.dbError("数据库错误0");
+        }
+        // 验证码错误
+        if (!emailCode.toLowerCase().equals(redisEmailCode.toLowerCase())) {
+            return ResponseUtil.captchaError();
+        }
+        stringRedisTemplate.opsForValue().getOperations().delete(emailCodeKey);
+    	
+    	UserEntity userInfoByUsername = userMapper.queryUserByUsername(username);
         UserEntity userInfoByEmail = userMapper.queryUserByEmail(email);
+        
         if (userInfoByUsername != null) {
             return ResponseUtil.usernameExist();
         }

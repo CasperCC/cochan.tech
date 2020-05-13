@@ -7,8 +7,8 @@ import com.cochan.blog.service.implement.UserServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
@@ -59,7 +59,6 @@ public class UserController {
         String imgCode = verifyUtil.getRandcode(response);
         stringRedisTemplate.opsForValue().set(IMG_CODE+imgToken, imgCode);
         stringRedisTemplate.expire(IMG_CODE+imgToken, cacheSecond, TimeUnit.SECONDS);
-//        session.setAttribute("imgCodeKey", IMG_CODE+imgToken);
     }
 
     /**
@@ -67,13 +66,13 @@ public class UserController {
      * @param request 以POST方式接收前端的值
      * @return 处理用户输入的信息并返回结果
      */
-    @RequestMapping(value = "/checklogin", method = RequestMethod.POST)
+    @PostMapping(value = "/checklogin")
     public String checkLogin(HttpServletRequest request) {
         String username = request.getParameter("usertag");
         String password = request.getParameter("password");
         String imgCode = request.getParameter("imgcode");
-        String token = request.getParameter("token");
-        String imgCodeKey = IMG_CODE + token.substring(7);
+        String paraImgToken = request.getParameter("paraImgToken");
+        String imgCodeKey = IMG_CODE + paraImgToken.substring(7);
 
         if (username == null || password == null || imgCode == null) {
             return ResponseUtil.missParams();
@@ -86,27 +85,35 @@ public class UserController {
      * 获取图形验证码token
      * @return 以json格式返回token
      */
-    @RequestMapping(value = "/getimgtoken")
+    @PostMapping(value = "/getimgtoken")
     public String getImgToken() {
         return ResponseUtil.success("token: "+imgToken);
     }
 
-    @RequestMapping(value = "/checkregister", method = RequestMethod.POST)
+    /**
+     * 检查注册信息是否合法
+     * @param request
+     * @param session
+     * @return
+     */
+    @PostMapping(value = "/checkregister")
     public String checkRegister(HttpServletRequest request, HttpSession session) {
         String username = request.getParameter("username");
         String email = request.getParameter("email");
         String nickname = request.getParameter("nickname");
         String password = request.getParameter("password");
-        String imgCode = request.getParameter("imgcode");
+        String emailCode = request.getParameter("emailCode");
+        String paraEmailToken = request.getParameter("paraEmailToken");
         int is_administrator = Integer.parseInt(request.getParameter("is_administrator"));
+        String emailCodeKey = EMAIL_CODE + paraEmailToken.substring(7);
 
-        if (username == null || email == null || password == null || imgCode == null) {
+        if (username == null || email == null || password == null || emailCode == null) {
             return ResponseUtil.missParams();
         }
 
         nickname = (nickname == null) ? username : nickname;
 
-        return userService.checkRegister(username, email, nickname, password, imgCode, is_administrator, session);
+        return userService.checkRegister(username, email, nickname, password, emailCode, emailCodeKey, is_administrator);
     }
 
     /**
@@ -115,7 +122,7 @@ public class UserController {
      * @param session 开启session
      * @return 返回邮件发送状态
      */
-    @RequestMapping(value = "/getemailcode", method = RequestMethod.POST)
+    @PostMapping(value = "/getemailcode")
     public String getEmailCode(HttpServletRequest request, HttpSession session) {
         mailToken = UUID.randomUUID().toString().replaceAll("-","");
         String email = request.getParameter("email");

@@ -2,17 +2,18 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
+	<packaging>war</packaging>
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>2.1.7.RELEASE</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>com.example</groupId>
+	<groupId>com.cochan</groupId>
 	<artifactId>cochan.tech</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>cochan.tech</name>
-	<description>Demo project for Spring Boot</description>
+	<name>cochan</name>
+	<description>personal website</description>
 
 	<properties>
 		<java.version>1.8</java.version>
@@ -29,6 +30,14 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
+
+
+<!--		<dependency>-->
+<!--			<groupId>org.springframework.boot</groupId>-->
+<!--			<artifactId>spring-boot-starter-tomcat</artifactId>-->
+<!--			<scope>provided</scope>-->
+<!--		</dependency>-->
+
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -85,7 +94,6 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-mail</artifactId>
-			<version>2.1.2.RELEASE</version>
 		</dependency>
 
 		<dependency>
@@ -94,10 +102,62 @@
 			<scope>provided</scope>
 		</dependency>
 
-
 	</dependencies>
 
+<!--	 多环境配置-->
+	<profiles>
+		<profile>
+			<id>dev</id>
+			<activation>
+				<!-- 默认情况下使用dev配置 -->
+				<activeByDefault>true</activeByDefault>
+			</activation>
+			<properties>
+				<profileActive>dev</profileActive>
+			</properties>
+		</profile>
+
+		<!-- 生产环境，打包命令"maven clean package -P prod" -->
+		<profile>
+			<id>prod</id>
+			<properties>
+				<profileActive>prod</profileActive>
+			</properties>
+		</profile>
+	</profiles>
+
 	<build>
+		<finalName>cochan</finalName>
+		<resources>
+			<resource>
+				<directory>/src/main/resources</directory>
+				<filtering>true</filtering>
+				<excludes>
+					<exclude>static/fonts/**</exclude>
+				</excludes>
+			</resource>
+			<resource>
+				<directory>/src/main/resources</directory>
+				<filtering>false</filtering>
+				<includes>
+					<include>static/fonts/**</include>
+				</includes>
+			</resource>
+
+			<resource>
+				<directory>src/main/resources</directory>
+				<filtering>true</filtering>
+				<includes>
+                    <!--加载模板文件-->
+                    <include>**/*.html</include>
+                    <!--加载静态文件-->
+                    <include>/static/</include>
+                    <!-- 项目打包完成的包中只包含当前环境文件 -->
+                    <include>application.properties</include>
+                    <include>application-${profileActive}.properties</include>
+                </includes>
+			</resource>
+		</resources>
 		<plugins>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
