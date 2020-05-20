@@ -469,9 +469,9 @@
                     url:"/login/checklogin",
                     type: "POST",
                     data: {
-                        "usertag": userTag,
+                        "userTag": userTag,
                         "password": password,
-                        "imgcode": imgCode,
+                        "imgCode": imgCode,
                         "paraImgToken": window.imgToken
                     },
                     dataType: "JSON",
@@ -539,22 +539,23 @@
     }
 
     function mailService() {
-        var userName = $("input[name='usertag']").val();
+        var username = $("input[name='usertag']").val();
         var email = $("input[name='email']").val();
-        var nickName = $("input[name='nickname']").val();
-        if (userName == "" || email == "") {
+        var nickname = $("input[name='nickname']").val();
+        if (username == "" || email == "") {
             layer.msg("用户名和邮箱不能为空！");
             return;
         }
-        if (nickName == "") {
-            nickName = userName;
+        if (nickname == "") {
+            nickname = username;
         }
         $.ajax({
             url: "/login/getemailcode",
             type: "POST",
             dataType: "JSON",
             data: {
-                "username": nickName,
+                "username": username,
+                "nickname": nickname,
                 "email": email
             },
             success: function (data) {

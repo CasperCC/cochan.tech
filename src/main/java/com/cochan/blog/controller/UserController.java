@@ -1,5 +1,6 @@
 package com.cochan.blog.controller;
 
+import com.cochan.blog.common.RedisUtil;
 import com.cochan.blog.common.ResponseUtil;
 import com.cochan.blog.common.VerifyUtil;
 import com.cochan.blog.service.implement.MailServiceImpl;
@@ -18,7 +19,6 @@ import java.util.concurrent.TimeUnit;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 
 /**
  * @author cochan
@@ -68,9 +68,9 @@ public class UserController {
      */
     @PostMapping(value = "/checklogin")
     public String checkLogin(HttpServletRequest request) {
-        String username = request.getParameter("usertag");
+        String username = request.getParameter("userTag");
         String password = request.getParameter("password");
-        String imgCode = request.getParameter("imgcode");
+        String imgCode = request.getParameter("imgCode");
         String paraImgToken = request.getParameter("paraImgToken");
         String imgCodeKey = IMG_CODE + paraImgToken.substring(7);
 
@@ -93,11 +93,10 @@ public class UserController {
     /**
      * 检查注册信息是否合法
      * @param request
-     * @param session
      * @return
      */
     @PostMapping(value = "/checkregister")
-    public String checkRegister(HttpServletRequest request, HttpSession session) {
+    public String checkRegister(HttpServletRequest request) {
         String username = request.getParameter("username");
         String email = request.getParameter("email");
         String nickname = request.getParameter("nickname");
@@ -112,6 +111,7 @@ public class UserController {
         }
 
         nickname = (nickname == null) ? username : nickname;
+        is_administrator = (is_administrator == 0) ? is_administrator : 1;
 
         return userService.checkRegister(username, email, nickname, password, emailCode, emailCodeKey, is_administrator);
     }
@@ -119,25 +119,25 @@ public class UserController {
     /**
      * 获取邮件验证码
      * @param request POST获得传参
-     * @param session 开启session
      * @return 返回邮件发送状态
      */
     @PostMapping(value = "/getemailcode")
-    public String getEmailCode(HttpServletRequest request, HttpSession session) {
+    public String getEmailCode(HttpServletRequest request) {
         mailToken = UUID.randomUUID().toString().replaceAll("-","");
         String email = request.getParameter("email");
         String username = request.getParameter("username");
+        String nickname = request.getParameter("nickname");
         int code = (int)((Math.random()*9+1)*100000);
+        String emailData = RedisUtil.stringtoJson(username, nickname, email, String.valueOf(code));
 
-        stringRedisTemplate.opsForValue().set(EMAIL_CODE+mailToken, String.valueOf(code));
+        stringRedisTemplate.opsForValue().set(EMAIL_CODE+mailToken, emailData);
         stringRedisTemplate.expire(EMAIL_CODE+mailToken, cacheSecond, TimeUnit.SECONDS);
-        session.setAttribute("emailCodeKey", EMAIL_CODE+mailToken);
 
         Map<String, Object> valueMap = new HashMap<>(3);
         valueMap.put("to", email);
         valueMap.put("title", "注册账户验证码");
         valueMap.put("operation", "注册账户");
-        valueMap.put("username", username);
+        valueMap.put("username", nickname);
         valueMap.put("code", code);
         return mailService.sendSimpleMail(valueMap);
     }
@@ -146,7 +146,7 @@ public class UserController {
      * 获取邮件验证码token
      * @return 以json格式返回token
      */
-    @RequestMapping(value = "/getemailtoken")
+    @PostMapping(value = "/getemailtoken")
     public String getEmailToken() {
         return ResponseUtil.success("token: "+mailToken);
     }

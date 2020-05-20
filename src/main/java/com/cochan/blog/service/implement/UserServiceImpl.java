@@ -1,5 +1,7 @@
 package com.cochan.blog.service.implement;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.cochan.blog.common.HashUtil;
 import com.cochan.blog.common.ResponseUtil;
 import com.cochan.blog.entity.UserEntity;
@@ -87,13 +89,19 @@ public class UserServiceImpl {
         if (emailCodeKey == null) {
             return ResponseUtil.captchaError();
         }
-    	String redisEmailCode = stringRedisTemplate.opsForValue().get(emailCodeKey);
+    	String emailData = stringRedisTemplate.opsForValue().get(emailCodeKey);
+    	JSONObject jsonObject=JSON.parseObject(emailData);
+    	String redisUsername = jsonObject.getString("username");
+    	String redisNickname = jsonObject.getString("nickname");
+    	String redisEmailCode = jsonObject.getString("code");
+    	String redisEmail = jsonObject.getString("email");
+
         // 数据库错误
-        if (redisEmailCode == null) {
-            return ResponseUtil.dbError("数据库错误0");
+        if (redisEmailCode == null || redisEmail == null) {
+            return ResponseUtil.dbError("数据库错误0"+emailCodeKey);
         }
         // 验证码错误
-        if (!emailCode.toLowerCase().equals(redisEmailCode.toLowerCase())) {
+        if (!(redisUsername.equals(username) && redisNickname.equals(nickname) && emailCode.equals(redisEmailCode) && email.equals(redisEmail))) {
             return ResponseUtil.captchaError();
         }
         stringRedisTemplate.opsForValue().getOperations().delete(emailCodeKey);
